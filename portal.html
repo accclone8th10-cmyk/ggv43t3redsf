@@ -1,18 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
+    <meta charset="UTF-8">
     <title>Cổng Game Tu Tiên</title>
     <style>
-        body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        
-        /* Định dạng cái khung chứa game */
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
         .game-frame {
-            width: 800px;  /* Chiều ngang khung */
-            height: 600px; /* Chiều dọc khung */
+            width: 800px;
+            height: 600px;
             border: 5px solid #4facfe;
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 0 20px #4facfe;
+            background: #000;
         }
 
         iframe {
@@ -25,14 +33,17 @@
 <body>
 
     <div class="game-frame">
-        <iframe src="https://ten-cua-ban.github.io/tu-tien-game/" 
-                allow="autoplay; fullscreen; keyboard">
-        </iframe>
+        <iframe 
+            src="index.html"
+            sandbox="allow-scripts allow-same-origin"
+            referrerpolicy="no-referrer"
+        ></iframe>
     </div>
+
+    <script>
+        // Chặn chuột phải ở cấp portal
+        document.addEventListener("contextmenu", e => e.preventDefault());
+    </script>
 
 </body>
 </html>
-<script>
-  document.addEventListener("contextmenu", e => e.preventDefault());
-</script>
-
