@@ -1,14 +1,30 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// --- CONFIG WORLD ---
+// ==========================================
+// 1. CẤU HÌNH HỆ THỐNG & THẾ GIỚI
+// ==========================================
 const WORLD = {
     width: 2000,
     height: 2000,
-    tileSize: 100
+    baseRate: 10
 };
 
-const player = {
+const LINH_CAN_MULT = 1.7; // Thiên Linh Căn
+const realms = [
+    { name: "Luyện Khí", need: 100, absorb: 1.0, color: "#4facfe" },
+    { name: "Trúc Cơ", need: 500, absorb: 1.3, color: "#00ff88" },
+    { name: "Kim Đan", need: 2000, absorb: 1.8, color: "#f6d365" }
+];
+
+// Load ảnh bản đồ (Đảm bảo file map.png nằm cùng thư mục trên GitHub)
+const mapImg = new Image();
+mapImg.src = 'map.png'; 
+
+// ==========================================
+// 2. KHỞI TẠO NHÂN VẬT & CAMERA
+// ==========================================
+let player = {
     x: WORLD.width / 2,
     y: WORLD.height / 2,
     size: 36,
@@ -16,106 +32,138 @@ const player = {
     linhKhi: 0,
     realm: 0,
     angle: 0,
-    state: "idle"
+    state: "idle" // idle | move | cultivate
 };
 
-// Camera để theo dõi nhân vật
 const camera = { x: 0, y: 0 };
-
-// Danh sách vật cản (Đá)
-const rocks = [
-    { x: 500, y: 500, r: 40 },
-    { x: 1200, y: 800, r: 60 },
-    { x: 800, y: 1500, r: 50 }
-];
-
-// --- INPUT ---
 const keys = {};
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+
+// ==========================================
+// 3. XỬ LÝ SỰ KIỆN (INPUT)
+// ==========================================
+window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.code === "Space") tryBreakthrough();
+});
 window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// --- LOGIC ---
+// Click chuột để ngồi thiền
+canvas.addEventListener("mousedown", () => {
+    if (player.state !== "move") player.state = "cultivate";
+});
+canvas.addEventListener("mouseup", () => {
+    if (player.state === "cultivate") player.state = "idle";
+});
+
+// ==========================================
+// 4. LOGIC GAME
+// ==========================================
 function update(dt) {
-    // 1. Di chuyển
+    // Di chuyển
     let dx = 0, dy = 0;
     if (keys["w"]) dy--; if (keys["s"]) dy++;
     if (keys["a"]) dx--; if (keys["d"]) dx++;
 
     if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
-        let nextX = player.x + (dx / len) * player.speed * dt;
-        let nextY = player.y + (dy / len) * player.speed * dt;
-
-        // Giới hạn biên bản đồ
-        player.x = Math.max(0, Math.min(WORLD.width, nextX));
-        player.y = Math.max(0, Math.min(WORLD.height, nextY));
+        player.x = Math.max(0, Math.min(WORLD.width, player.x + (dx / len) * player.speed * dt));
+        player.y = Math.max(0, Math.min(WORLD.height, player.y + (dy / len) * player.speed * dt));
         player.state = "move";
-    } else {
+    } else if (player.state !== "cultivate") {
         player.state = "idle";
     }
 
-    // 2. Cập nhật Camera (Giữ player ở giữa)
+    // Tu luyện
+    const realm = realms[player.realm] || realms[realms.length - 1];
+    let gain = 0;
+    if (player.state === "cultivate") {
+        gain = WORLD.baseRate * LINH_CAN_MULT * realm.absorb * 2; // Bonus x2 khi thiền
+    } else {
+        gain = WORLD.baseRate * LINH_CAN_MULT * realm.absorb * 0.2; // Tu bị động
+    }
+    player.linhKhi += dt * gain;
+    player.angle += dt * (player.state === "cultivate" ? 3 : 1);
+
+    // Cập nhật Camera (Giữ nhân vật ở giữa màn hình)
     camera.x = player.x - canvas.width / 2;
     camera.y = player.y - canvas.height / 2;
 
-    player.angle += dt;
+    updateUI(gain, realm);
 }
 
-// --- DRAWING ---
-function drawMap() {
+function updateUI(gain, realm) {
+    document.getElementById("level-display").innerText = `Cảnh giới: ${realm.name}`;
+    document.getElementById("spirit-count").innerText = Math.floor(player.linhKhi);
+    document.getElementById("speed-tag").innerText = `Linh tốc: +${gain.toFixed(1)}/s`;
+    document.getElementById("progress").style.width = Math.min((player.linhKhi / realm.need) * 100, 100) + "%";
+}
+
+function tryBreakthrough() {
+    const realm = realms[player.realm];
+    if (realm && player.linhKhi >= realm.need) {
+        player.linhKhi = 0;
+        player.realm++;
+        // Hiệu ứng lóe sáng
+        canvas.style.filter = "brightness(2)";
+        setTimeout(() => canvas.style.filter = "brightness(1)", 150);
+    }
+}
+
+// ==========================================
+// 5. VẼ ĐỒ HỌA
+// ==========================================
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const realm = realms[player.realm] || realms[realms.length - 1];
+
     ctx.save();
-    // Dịch chuyển toàn bộ thế giới ngược hướng camera
     ctx.translate(-camera.x, -camera.y);
 
-    // Vẽ nền (Lưới đất)
-    ctx.strokeStyle = "#1a2635";
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= WORLD.width; x += WORLD.tileSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD.height); ctx.stroke();
+    // Vẽ Bản đồ (Ảnh map.png)
+    if (mapImg.complete) {
+        ctx.drawImage(mapImg, 0, 0, WORLD.width, WORLD.height);
+    } else {
+        // Nếu ảnh chưa load thì vẽ nền tạm
+        ctx.fillStyle = "#1a2635";
+        ctx.fillRect(0, 0, WORLD.width, WORLD.height);
     }
-    for (let y = 0; y <= WORLD.height; y += WORLD.tileSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD.width, y); ctx.stroke();
-    }
-
-    // Vẽ các tảng đá (Vật cản test)
-    ctx.fillStyle = "#455a64";
-    rocks.forEach(rock => {
-        ctx.beginPath();
-        ctx.arc(rock.x, rock.y, rock.r, 0, Math.PI * 2);
-        ctx.fill();
-    });
 
     // Vẽ nhân vật
-    drawPlayer();
-
-    ctx.restore();
-}
-
-function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
     
-    // Vòng linh khí
+    // Aura xoay
     ctx.rotate(player.angle);
-    ctx.strokeStyle = "#00f2fe";
+    ctx.strokeStyle = realm.color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash(player.state === "cultivate" ? [] : [5, 10]);
     ctx.strokeRect(-player.size/2 - 5, -player.size/2 - 5, player.size + 10, player.size + 10);
     
-    // Nhân vật
+    // Body nhân vật
+    ctx.rotate(-player.angle * 1.5);
     ctx.fillStyle = "white";
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = realm.color;
     ctx.fillRect(-player.size/2, -player.size/2, player.size, player.size);
+    ctx.restore();
+
     ctx.restore();
 }
 
+// ==========================================
+// 6. VÒNG LẶP GAME (GAME LOOP)
+// ==========================================
+let lastTime = 0;
 function loop(time) {
-    const dt = (time - (loop.last || time)) / 1000;
-    loop.last = time;
-    update(dt);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawMap();
+    const dt = (time - lastTime) / 1000;
+    lastTime = time;
+    if (dt < 0.1) { 
+        update(dt);
+        draw();
+    }
     requestAnimationFrame(loop);
 }
 
-// Khởi chạy
 window.addEventListener("resize", () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
