@@ -2,36 +2,27 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Huyền Vũ Tu Tiên - Tu Luyện</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Huyền Vũ Tu Tiên - Chiến Đấu</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="ui-layer">
     <div class="header">
       <div id="level-display" class="level-text">Cảnh giới: Luyện Khí</div>
-      <div id="state-display">Trạng thái: Đang đứng</div>
+      <div id="state-display" style="color: #00f2fe;">Trạng thái: Tĩnh tọa</div>
     </div>
-
     <div class="stats-box">
-      <div>Linh khí: <span id="spirit-count">0</span></div>
-      <div class="stat-bar">
-        <div id="progress"></div>
-      </div>
-      <div id="speed-tag">Linh tốc: +0/s</div>
+      <span class="bar-label">Máu (HP)</span>
+      <div class="stat-bar"><div id="hp-bar"></div></div>
+      <span class="bar-label">Linh khí: <span id="spirit-count">0</span></span>
+      <div class="stat-bar"><div id="progress"></div></div>
+      <div id="speed-tag" style="font-size: 12px; color: #00ff88;">+0/s</div>
     </div>
-
     <div class="controls-hint">
-      WASD: Di chuyển | Giữ Chuột: Thiền | SPACE: Đột phá
+      WASD: Di chuyển | Giữ Chuột: Thiền | Click Quái: Tấn công | SPACE: Đột phá
     </div>
   </div>
-
   <canvas id="game"></canvas>
-
   <script src="main.js"></script>
-  <script>
-    document.addEventListener("contextmenu", e => e.preventDefault());
-    window.addEventListener("mousedown", () => window.focus());
-  </script>
 </body>
 </html>
