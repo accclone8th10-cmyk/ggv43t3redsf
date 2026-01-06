@@ -1,80 +1,88 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// Cập nhật thông số từ bộ nhớ của bạn
+// Thông số cấu hình từ bộ nhớ hệ thống của bạn
 const CONFIG = {
-    INFINITY_RADIUS: 13, // Bán kính vòng sáng tu luyện
-    SPEED_MULTIPLIER: 3   // Tốc độ x3 như bạn đã thiết lập
+    INFINITY_RADIUS: 13,
+    SPEED_MULTIPLIER: 3 
 };
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let player = {
-    x: canvas.width / 2,
-    y: canvas.height / 2,
-    size: 40,
-    linhKhi: 0,
-    level: 0,
-    angle: 0 // Dùng để xoay vòng sáng
-};
-
+// Cấu hình cảnh giới chuyên sâu cho Idle
 const levels = [
-    { name: "Luyện Khí", need: 100 },
-    { name: "Trúc Cơ", need: 300 },
-    { name: "Kim Đan", need: 800 },
-    { name: "Nguyên Anh", need: 2000 }
+    { name: "Luyện Khí", need: 100, color: "#4facfe", gain: 20 },
+    { name: "Trúc Cơ", need: 500, color: "#00ff88", gain: 50 },
+    { name: "Kim Đan", need: 2000, color: "#f6d365", gain: 150 },
+    { name: "Nguyên Anh", need: 10000, color: "#ff0844", gain: 500 }
 ];
 
-// Cập nhật UI HTML
-function updateUI() {
-    const current = levels[player.level] || { name: "Đại Năng", need: 1 };
-    document.getElementById("level-name").innerText = `Cảnh giới: ${current.name}`;
-    document.getElementById("spirit-count").innerText = Math.floor(player.linhKhi);
-    
-    let percent = (player.linhKhi / current.need) * 100;
-    document.getElementById("progress").style.width = Math.min(percent, 100) + "%";
-}
+let player = {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+    size: 35,
+    linhKhi: 0,
+    level: 0,
+    angle: 0
+};
+
+// --- FIX: Thêm Resize xử lý méo màn hình ---
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+});
+window.dispatchEvent(new Event('resize'));
 
 window.addEventListener("keydown", (e) => {
     if (e.code === "Space") tryBreakthrough();
 });
-
-function update(dt) {
-    // Tăng linh khí theo multiplier x3
-    player.linhKhi += dt * 20 * CONFIG.SPEED_MULTIPLIER;
-    player.angle += dt * 2; // Xoay vòng sáng
-    updateUI();
-}
 
 function tryBreakthrough() {
     const current = levels[player.level];
     if (current && player.linhKhi >= current.need) {
         player.linhKhi = 0;
         player.level++;
-        // Thêm hiệu ứng rung màn hình nhẹ khi đột phá
-        canvas.style.transform = "scale(1.05)";
-        setTimeout(() => canvas.style.transform = "scale(1)", 100);
+        canvas.style.filter = "brightness(2)"; // Hiệu ứng lóe sáng
+        setTimeout(() => canvas.style.filter = "brightness(1)", 200);
     }
+}
+
+function update(dt) {
+    const current = levels[player.level] || levels[levels.length - 1];
+    // Tốc độ tăng linh khí dựa trên cảnh giới * multiplier hệ thống
+    player.linhKhi += dt * current.gain * CONFIG.SPEED_MULTIPLIER;
+    player.angle += dt * 1.5; // Tốc độ xoay aura
+
+    // Cập nhật UI
+    const progress = document.getElementById("progress");
+    document.getElementById("level-name").innerText = `Cảnh giới: ${current.name}`;
+    document.getElementById("spirit-count").innerText = Math.floor(player.linhKhi);
+    progress.style.width = Math.min((player.linhKhi / current.need) * 100, 100) + "%";
+    progress.style.background = current.color;
+    progress.style.boxShadow = `0 0 10px ${current.color}`;
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const currentLevel = levels[player.level] || levels[levels.length-1];
 
-    // Vẽ vòng sáng tu luyện (Sử dụng INFINITY_RADIUS)
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(0, 242, 254, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.arc(player.x, player.y, player.size + CONFIG.INFINITY_RADIUS, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Vẽ nhân vật (Hình thoi cách điệu tu tiên)
+    // --- FIX: Vòng sáng xoay cho "đã tu" ---
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.rotate(player.angle / 2);
-    ctx.fillStyle = "#4facfe";
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#00f2fe";
+    ctx.rotate(player.angle);
+    
+    ctx.beginPath();
+    ctx.strokeStyle = currentLevel.color;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 15]); // Tạo nét đứt cho vòng xoay linh khí
+    ctx.arc(0, 0, player.size + CONFIG.INFINITY_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Nhân vật trung tâm
+    ctx.rotate(-player.angle * 1.5); // Xoay ngược lại cho nhân vật
+    ctx.fillStyle = "white";
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = currentLevel.color;
     ctx.fillRect(-player.size/2, -player.size/2, player.size, player.size);
     ctx.restore();
 }
